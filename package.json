@@ -1,6 +1,6 @@
 {
   "name": "@animoca/f1dt-ethereum-contracts",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "F1 Delta Time Solidity Contracts",
   "author": "Animoca Brands",
   "license": "MIT",
@@ -63,6 +63,9 @@
     "@animoca/revv-ethereum-contracts-1.0.0": "npm:@animoca/revv-ethereum-contracts@1.0.0",
     "@openzeppelin/contracts": "=3.4.0",
     "hardhat": "^2.4.1"
+  },
+  "peerDependencies": {
+    "@animoca/ethereum-hardhat-bootstrap": "^1.0.0"
   },
   "engines": {
     "node": ">=12.18 <13"

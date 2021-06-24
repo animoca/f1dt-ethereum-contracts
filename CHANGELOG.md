@@ -1,6 +1,10 @@
 # Changelog
 
 
+## 3.0.1
+
+### Fixes
+ * Adding `@animoca/ethereum-hardhat-bootstrap` as peer dependency.
 ## 3.0.0
 
 ### Breaking changes
