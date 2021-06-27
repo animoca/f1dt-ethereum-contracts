@@ -25,13 +25,11 @@ contract PayoutClaimDistributor is Ownable {
      */
     mapping(bytes32 => bool) public claimed;
 
-    /// @dev Constructor for setting ERC token address and merkleroot on deployment
+    /// @dev Constructor for setting ERC token address on deployment
     /// @param ercToken_ Address for token to distribute
-    /// @param merkleRoot_ String of initial merkle root
     /// @dev `distAddress` deployer address will be distributor address by default
-    constructor(IERC20 ercToken_, bytes32 merkleRoot_) Ownable(msg.sender) {
+    constructor(IERC20 ercToken_) Ownable(msg.sender) {
         ercToken = ercToken_;
-        merkleRoot = merkleRoot_;
         distAddress = msg.sender;
     }
 

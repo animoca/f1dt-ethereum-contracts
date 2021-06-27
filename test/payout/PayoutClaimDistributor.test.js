@@ -1,12 +1,12 @@
 const {accounts, artifacts} = require('hardhat');
 const {BN, expectEvent, expectRevert} = require('@openzeppelin/test-helpers');
 const {toWei} = require('web3-utils');
-const {ZeroAddress, Zero, One, Two} = require('@animoca/ethereum-contracts-core').constants;
+const {One, Two} = require('@animoca/ethereum-contracts-core').constants;
 
 const REVV = artifacts.require('REVV');
 const PayoutClaimDistributor = artifacts.require('PayoutClaimDistributor');
 
-const [deployer, operator, operation, anonymous, ...participants] = accounts;
+const [deployer, ...participants] = accounts;
 const [participant, participant2, participant3] = participants;
 
 describe('PayoutClaim Distributor contract', function () {
@@ -14,7 +14,7 @@ describe('PayoutClaim Distributor contract', function () {
     this.revv = await REVV.new(overrides.holders || [participant], overrides.amounts || [toWei('1000')], {
       from: overrides.deployer || deployer,
     });
-    this.distributor = await PayoutClaimDistributor.new(this.revv.address, '0x9ebcac2f57a45eb2f1989d25b00df9653f08de05d028a431fd5e66d24d09e91a', {
+    this.distributor = await PayoutClaimDistributor.new(this.revv.address, {
       from: overrides.deployer || deployer,
     });
   }
@@ -49,15 +49,20 @@ describe('PayoutClaim Distributor contract', function () {
     });
 
     it('lets owner set tokenAddress and merkleRoot on deployment', async function () {
-      let merkleRootPassedWithConstructor = '0x9ebcac2f57a45eb2f1989d25b00df9653f08de05d028a431fd5e66d24d09e91a';
       let tokenAddressPassedWithConstructor = this.revv.address.toLowerCase();
 
-      const merkleRoot = await this.distributor.merkleRoot();
       const ercTokenAddress = await this.distributor.ercToken();
 
       const tokenAddress = ercTokenAddress.toLowerCase();
-      merkleRoot.should.be.equal(merkleRootPassedWithConstructor);
       tokenAddress.should.be.equal(tokenAddressPassedWithConstructor);
+    });
+
+    it('lets owner set merkleRoot', async function () {
+      let newMerkleRoot = '0x9ebcac2f57a45eb2f1989d25b00df9653f08de05d028a431fd5e66d24d09e91a';
+      await this.distributor.setMerkleRoot(newMerkleRoot, {from: deployer});
+      const merkleRoot = await this.distributor.merkleRoot();
+
+      merkleRoot.should.be.equal(newMerkleRoot);
     });
   });
 
@@ -125,9 +130,9 @@ describe('PayoutClaim Distributor contract', function () {
       let newMerkleRoot = '0x74240ff0f67350e4c643ccd4b68d93aa4fa79da004e4120096d7a9f17fc5d9e1';
 
       await this.distributor.setMerkleRoot(newMerkleRoot, {from: deployer});
-      const merkle_root = await this.distributor.merkleRoot();
+      const merkleRoot = await this.distributor.merkleRoot();
 
-      merkle_root.should.be.equal(newMerkleRoot);
+      merkleRoot.should.be.equal(newMerkleRoot);
     });
 
     it('lets the owner lock the payout period', async function () {
@@ -192,6 +197,7 @@ describe('PayoutClaim Distributor contract', function () {
         allowances: [this.revvMaxSupply],
       });
       await this.distributor.setLocked(false);
+      await this.distributor.setMerkleRoot('0x9ebcac2f57a45eb2f1989d25b00df9653f08de05d028a431fd5e66d24d09e91a', {from: deployer});
       await this.distributor.setDistributorAddress(participant, {from: deployer});
     });
 
