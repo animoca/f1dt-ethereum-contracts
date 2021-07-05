@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.0.2
+
+### Improvements
+ * Remove merkle root as constructor argument in `PayoutClaimDistributor.sol`.
 
 ## 3.0.1
 
