@@ -4,10 +4,12 @@ pragma solidity >=0.7.6 <0.8.0;
 import {MerkleProof} from "@openzeppelin/contracts/cryptography/MerkleProof.sol";
 import {Ownable} from "@animoca/ethereum-contracts-core/contracts/access/Ownable.sol";
 import {IERC20} from "@animoca/ethereum-contracts-assets/contracts/token/ERC20/IERC20.sol";
+import {ERC20Wrapper, IWrappedERC20} from "@animoca/ethereum-contracts-core/contracts/utils/ERC20Wrapper.sol";
 
 /// @title PayoutClaimDistributor
 contract PayoutClaimDistributor is Ownable {
     using MerkleProof for bytes32[];
+    using ERC20Wrapper for IWrappedERC20;
 
     event SetMerkleRoot(bytes32 indexed _merkleRoot);
     event ClaimedPayout(address indexed _address, uint256 amount, bytes32 salt);
@@ -15,7 +17,7 @@ contract PayoutClaimDistributor is Ownable {
     event SetDistributorAddress(address indexed _ownerAddress, address indexed _distAddress);
 
     bytes32 public merkleRoot;
-    IERC20 public token;
+    IWrappedERC20 public token;
     address public distAddress;
     bool public isLocked;
 
@@ -27,7 +29,7 @@ contract PayoutClaimDistributor is Ownable {
     /// @dev Constructor for setting ERC token address on deployment
     /// @param token_ Address for token to distribute
     /// @dev `distAddress` deployer address will be distributor address by default
-    constructor(IERC20 token_) Ownable(msg.sender) {
+    constructor(IWrappedERC20 token_) Ownable(msg.sender) {
         token = token_;
         distAddress = msg.sender;
     }
@@ -52,7 +54,7 @@ contract PayoutClaimDistributor is Ownable {
 
     /// @notice Distributor address in PayoutClaim Distributor
     /// @dev Wallet that holds token for distribution
-    /// @param distributorAddress_ Distributor address used for distribution of `ercToken` token
+    /// @param distributorAddress_ Distributor address used for distribution of `token` token
     function setDistributorAddress(address distributorAddress_) public {
         _requireOwnership(_msgSender());
         distAddress = distributorAddress_;
