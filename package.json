@@ -56,7 +56,7 @@
     "@animoca/blockchain-inventory_metadata": "=0.1.0",
     "@animoca/ethereum-contracts-assets": "^1.0.1",
     "@animoca/ethereum-contracts-assets-1.0.1": "npm:@animoca/ethereum-contracts-assets@1.0.1",
-    "@animoca/ethereum-contracts-core": "^1.0.1",
+    "@animoca/ethereum-contracts-core": "^1.1.1",
     "@animoca/ethereum-contracts-core-1.0.1": "npm:@animoca/ethereum-contracts-core@1.0.1",
     "@animoca/ethereum-hardhat-bootstrap": "^1.0.0",
     "@animoca/f1dt-core_metadata": "^2.1.0",

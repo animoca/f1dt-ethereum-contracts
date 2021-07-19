@@ -51,7 +51,7 @@ describe('PayoutClaim Distributor contract', function () {
     it('lets owner set tokenAddress and merkleRoot on deployment', async function () {
       let tokenAddressPassedWithConstructor = this.revv.address.toLowerCase();
 
-      const ercTokenAddress = await this.distributor.ercToken();
+      const ercTokenAddress = await this.distributor.token();
 
       const tokenAddress = ercTokenAddress.toLowerCase();
       tokenAddress.should.be.equal(tokenAddressPassedWithConstructor);
@@ -87,13 +87,6 @@ describe('PayoutClaim Distributor contract', function () {
       await expectRevert(this.distributor.setLocked(false, {from: participant2}), 'Ownable: not the owner');
     });
 
-    it('a general(non-owner) user cannot re-set the token to claim', async function () {
-      await expectRevert(
-        this.distributor.setTokenToClaim('0x591cda1fddbbf1ad3bd32cb9dfa096a44644f2df', {from: participant2}),
-        'Ownable: not the owner'
-      );
-    });
-
     it('a general(non-owner) user cannot re-set the merkleRoot to claim', async function () {
       await expectRevert(
         this.distributor.setMerkleRoot('0x74240ff0f67350e4c643ccd4b68d93aa4fa79da004e4120096d7a9f17fc5d9e1', {from: participant2}),
@@ -113,17 +106,6 @@ describe('PayoutClaim Distributor contract', function () {
         owners: [participant],
         allowances: [this.revvMaxSupply],
       });
-    });
-
-    it('lets owner re-set the token to claim', async function () {
-      let newTokenAddress = '0x7fc77500c84a76ad7e9c93437bfc5ac33e2ddae9';
-
-      await this.distributor.setTokenToClaim(newTokenAddress, {from: deployer});
-
-      const token_address = await this.distributor.ercToken();
-      const tokenAddress = token_address.toLowerCase();
-
-      tokenAddress.should.be.equal(newTokenAddress);
     });
 
     it('lets owner re-set the merkleRoot for next payout period', async function () {
@@ -337,14 +319,6 @@ describe('PayoutClaim Distributor contract', function () {
         allowances: [this.revvMaxSupply],
       });
       await this.distributor.setLocked(false);
-    });
-
-    it('emits SetTokenToClaim event when owner re-sets the tokenAddress', async function () {
-      let newTokenAddress = '0x7fc77500c84a76ad7e9c93437bfc5ac33e2ddae9';
-      const setTokenToClaimEvent = await this.distributor.setTokenToClaim(newTokenAddress, {from: deployer});
-      await expectEvent(setTokenToClaimEvent, 'SetTokenToClaim', {
-        _tokenAddress: '0x7fC77500C84a76ad7e9C93437BfC5ac33e2DdAE9',
-      });
     });
 
     it('emits SetMerkleRoot event when owner re-sets the merkleRoot', async function () {

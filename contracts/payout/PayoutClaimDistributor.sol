@@ -10,13 +10,12 @@ contract PayoutClaimDistributor is Ownable {
     using MerkleProof for bytes32[];
 
     event SetMerkleRoot(bytes32 indexed _merkleRoot);
-    event SetTokenToClaim(address _tokenAddress);
     event ClaimedPayout(address indexed _address, uint256 amount, bytes32 salt);
     event DistributionLocked(bool _isLocked);
     event SetDistributorAddress(address indexed _ownerAddress, address indexed _distAddress);
 
     bytes32 public merkleRoot;
-    IERC20 public ercToken;
+    IERC20 public token;
     address public distAddress;
     bool public isLocked;
 
@@ -26,20 +25,11 @@ contract PayoutClaimDistributor is Ownable {
     mapping(bytes32 => bool) public claimed;
 
     /// @dev Constructor for setting ERC token address on deployment
-    /// @param ercToken_ Address for token to distribute
+    /// @param token_ Address for token to distribute
     /// @dev `distAddress` deployer address will be distributor address by default
-    constructor(IERC20 ercToken_) Ownable(msg.sender) {
-        ercToken = ercToken_;
+    constructor(IERC20 token_) Ownable(msg.sender) {
+        token = token_;
         distAddress = msg.sender;
-    }
-
-    /// @notice Token address that user could claim
-    /// @dev Owner sets  `ercToken` token address to claim
-    /// @param ercToken_ Token address for token to distribute
-    function setTokenToClaim(IERC20 ercToken_) public {
-        _requireOwnership(_msgSender());
-        ercToken = ercToken_;
-        emit SetTokenToClaim(address(ercToken_));
     }
 
     /// @notice Merkle Root for current period to use for payout
@@ -61,7 +51,7 @@ contract PayoutClaimDistributor is Ownable {
     }
 
     /// @notice Distributor address in PayoutClaim Distributor
-    /// @dev Wallet that holds erctoken for distribution
+    /// @dev Wallet that holds token for distribution
     /// @param distributorAddress_ Distributor address used for distribution of `ercToken` token
     function setDistributorAddress(address distributorAddress_) public {
         _requireOwnership(_msgSender());
@@ -93,7 +83,7 @@ contract PayoutClaimDistributor is Ownable {
 
         claimed[leafHash] = true;
 
-        require(ercToken.transferFrom(distAddress, address_, amount), "Payout failed");
+        require(token.transferFrom(distAddress, address_, amount), "Payout failed");
 
         emit ClaimedPayout(address_, amount, salt);
     }
