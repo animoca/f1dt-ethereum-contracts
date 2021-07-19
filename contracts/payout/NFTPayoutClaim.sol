@@ -67,8 +67,8 @@ contract NFTPayoutClaim is Ownable {
 		bytes32 merkleRoot,
 		bytes32[] calldata merkleProof
 	) external {
-		require(merkleRootIndex[_merkleRoot] == 0,'NFTPayoutClaim: Invalid MerkleRoot');
-		require(!merkleRootStatus[_merkleRoot], 'NFTPayoutClaim: MerkleRoot not enabled.');
+		require(merkleRootIndex[merkleRoot] == 0,'NFTPayoutClaim: Invalid MerkleRoot');
+		require(!merkleRootStatus[merkleRoot], 'NFTPayoutClaim: MerkleRoot not enabled.');
 
 		uint i;
 		for (i = 0; i < contractAddress.length; i++) {
