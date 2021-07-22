@@ -2,87 +2,80 @@
 pragma solidity >=0.6.8;
 pragma experimental ABIEncoderV2;
 
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/token/ERC1155/IERC1155.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/cryptography/MerkleProof.sol";
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/access/Ownable.sol";
+//import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/token/ERC1155/IERC1155.sol";
+//import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/cryptography/MerkleProof.sol";
+//import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/access/Ownable.sol";
 
-// import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-// import "@openzeppelin/contracts/cryptography/MerkleProof.sol";
-// import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "hardhat/console.sol";
 
 contract NFTPayoutClaim is Ownable {
+    using MerkleProof for bytes32[];
 
-	event SetDistributor(address indexed _address, address indexed _distributorAddress);
-	event SetMerkleRoot(address indexed _address, bytes32 _merkleRoot);
-	event ClaimPayout(address indexed _fromAddress, address indexed _toAddress, uint256[] _tokenId, uint256[] _amount);
-	event SetMerkleRootStatus(bytes32 _merkleRoot, bool _status);
+    event SetDistributor(address indexed _address, address indexed _distributorAddress);
+    event SetMerkleRoot(address indexed _address, bytes32 _merkleRoot);
+    event ClaimPayout(address indexed _fromAddress, address indexed _toAddress, uint256[] _tokenId, uint256[] _amount);
+    event SetMerkleRootStatus(bytes32 _merkleRoot, bool _status);
 
-	address public _distributorAddress;
+    address public _distributorAddress;
 
-	uint256 merkleRootCounts;
-	mapping(bytes32 => uint256) private merkleRootIndex;
-	mapping(bytes32 => mapping(bytes32 => bool)) private claimed; // merkleRoot -> (hash, claimed)
-	mapping(bytes32 => bool) private merkleRootStatus; // merkleRoot -> disabled
+    uint256 merkleRootCount;
+    mapping(bytes32 => mapping(bytes32 => bool)) private claimed; // merkleRoot -> (hash, claimed)
+    mapping(bytes32 => bool) public merkleRoots; // merkleRoot -> enabled
+    mapping(bytes32 => bool) public merkleRootExists; // merkleRoot -> exists (optional - for validation)
 
-	constructor() public {
+    constructor() public {
 
-	}
+    }
 
-	function setDistributor(address distributorAddress) external onlyOwner {
-		_distributorAddress = distributorAddress;
-		emit SetDistributor(msg.sender, _distributorAddress);
-	}
+    function setDistributor(address distributorAddress) external onlyOwner {
+        _distributorAddress = distributorAddress;
+        emit SetDistributor(msg.sender, _distributorAddress);
+    }
 
-	function _distributor() external view returns (address) {
-		return _distributorAddress;
-	}
+    function addMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+        uint256 count = merkleRootCount;
+        merkleRootCount = count + 1;
 
-	function addMerkleRoot(bytes32 _merkleRoot) external onlyOwner returns (uint256) {
-		require(merkleRootIndex[_merkleRoot] == 0,'NFTPayoutClaim: MerkleRoot already set.');
+        merkleRoots[_merkleRoot] = true;
+        merkleRootExists[_merkleRoot] = true;
 
-		uint256 merkleRootCount = merkleRootCounts+1;
-		merkleRootIndex[_merkleRoot] = merkleRootCount;
+        emit SetMerkleRoot(msg.sender, _merkleRoot);
+    }
 
-		merkleRootCounts++;
-		emit SetMerkleRoot(msg.sender, _merkleRoot);
-		return merkleRootCount;
-	}
+    function disableMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+        merkleRoots[_merkleRoot] = false;
+        emit SetMerkleRootStatus(_merkleRoot, false);
+    }
 
-	function setMerkleRootStatus(bytes32 _merkleRoot, bool _status) external onlyOwner {
-		require(merkleRootStatus[_merkleRoot] != _status, 'NFTPayoutClaim: Already set status.');
+    function claimPayout(
+        uint256[] calldata _index,
+        bytes32 batch,
+        address[] calldata _contractAddress,
+        uint256[][] calldata _tokenIds,
+        uint256[][] calldata _amounts,
+        bytes32 _merkleRoot,
+        bytes32[][] calldata _merkleProof
+    ) external {
+        require(merkleRootExists[_merkleRoot], 'NFTPayoutClaim: Invalid MerkleRoot');
+        require(merkleRoots[_merkleRoot], 'NFTPayoutClaim: MerkleRoot not enabled.');
 
-		merkleRootStatus[_merkleRoot] = _status;
-		emit SetMerkleRootStatus(_merkleRoot, _status);
-	}
+        uint i;
+        for (i = 0; i < _contractAddress.length; i++) {
+            address contractAddr = _contractAddress[i];
 
-	function claimPayout(
-		uint256 index,
-		bytes32 batch,
-		address receiverAddress,
-		address[] calldata contractAddress,
-		uint256[][] calldata tokenIds,
-		uint256[][] calldata amounts,
-		bytes32 merkleRoot,
-		bytes32[] calldata merkleProof
-	) external {
-		require(merkleRootIndex[merkleRoot] == 0,'NFTPayoutClaim: Invalid MerkleRoot');
-		require(!merkleRootStatus[merkleRoot], 'NFTPayoutClaim: MerkleRoot not enabled.');
+            bytes32 leafHash = keccak256(abi.encodePacked(_index[i], batch, msg.sender, contractAddr, _tokenIds[i], _amounts[i]));
 
-		uint i;
-		for (i = 0; i < contractAddress.length; i++) {
-			address contractAddr = contractAddress[i];
+            require(!claimed[_merkleRoot][leafHash], "NFTPayoutClaim: Payout already claimed");
+            require(_merkleProof[i].verify(_merkleRoot, leafHash), 'NFTPayoutClaim: Invalid proof.');
 
-			bytes32 leafHash = keccak256(abi.encodePacked(index, batch, receiverAddress, contractAddr, tokenIds[i], amounts[i]));
+            claimed[_merkleRoot][leafHash] = true;
 
-			require(!claimed[merkleRoot][leafHash], "NFTPayoutClaim: Payout already claimed");
-			require(MerkleProof.verify(merkleProof, merkleRoot, leafHash), 'NFTPayoutClaim: Invalid proof.');
-
-			claimed[merkleRoot][leafHash] = true;
-
-			IERC1155(contractAddr).safeBatchTransferFrom(_distributorAddress, receiverAddress, tokenIds[i], amounts[i], "");
-			emit ClaimPayout(_distributorAddress, receiverAddress, tokenIds[i], amounts[i]);
-		}
-	}
+            IERC1155(contractAddr).safeBatchTransferFrom(_distributorAddress, msg.sender, _tokenIds[i], _amounts[i], "");
+            emit ClaimPayout(_distributorAddress, msg.sender, _tokenIds[i], _amounts[i]);
+        }
+    }
 }
