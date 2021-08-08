@@ -2,19 +2,18 @@
 pragma solidity >=0.7.6 <0.8.0;
 
 import {MerkleProof} from "@openzeppelin/contracts/cryptography/MerkleProof.sol";
-import {Ownable} from "@animoca/ethereum-contracts-core/contracts/access/Ownable.sol";
-import {IERC20} from "@animoca/ethereum-contracts-assets/contracts/token/ERC20/IERC20.sol";
-import {ERC20Wrapper, IWrappedERC20} from "@animoca/ethereum-contracts-core/contracts/utils/ERC20Wrapper.sol";
+import {Ownable} from "@animoca/ethereum-contracts-core-1.1.1/contracts/access/Ownable.sol";
+import {ERC20Wrapper, IWrappedERC20} from "@animoca/ethereum-contracts-core-1.1.1/contracts/utils/ERC20Wrapper.sol";
 
 /// @title PayoutClaimDistributor
 contract PayoutClaimDistributor is Ownable {
     using MerkleProof for bytes32[];
     using ERC20Wrapper for IWrappedERC20;
 
-    event SetMerkleRoot(bytes32 indexed _merkleRoot);
-    event ClaimedPayout(address indexed _address, uint256 amount, bytes32 salt);
-    event DistributionLocked(bool _isLocked);
-    event SetDistributorAddress(address indexed _ownerAddress, address indexed _distAddress);
+    event SetMerkleRoot(bytes32 indexed merkleRoot);
+    event ClaimedPayout(address indexed account, uint256 amount, uint256 batch);
+    event DistributionLocked(bool isLocked);
+    event SetDistributorAddress(address indexed ownerAddress, address indexed distAddress);
 
     bytes32 public merkleRoot;
     IWrappedERC20 public token;
@@ -54,39 +53,36 @@ contract PayoutClaimDistributor is Ownable {
 
     /// @notice Distributor address in PayoutClaim Distributor
     /// @dev Wallet that holds token for distribution
-    /// @param distributorAddress_ Distributor address used for distribution of `token` token
-    function setDistributorAddress(address distributorAddress_) public {
+    /// @param distributorAddress Distributor address used for distribution of `token` token
+    function setDistributorAddress(address distributorAddress) public {
         _requireOwnership(_msgSender());
-        distAddress = distributorAddress_;
-        emit SetDistributorAddress(msg.sender, distributorAddress_);
+        distAddress = distributorAddress;
+        emit SetDistributorAddress(_msgSender(), distributorAddress);
     }
 
     /// @notice Payout method that user calls to claim
     /// @dev Method user calls for claiming the payout for user
-    /// @param index Index assigned for the address for the merkle root
-    /// @param address_ Address of the user to claim the payout
+    /// @param account Address of the user to claim the payout
     /// @param amount Claimable amount of address
-    /// @param salt Unique value for user for each new merkle root generating
+    /// @param batch Unique value for user for each new merkle root generating
     /// @param merkleProof Merkle proof of the user based on the merkle root
     function claimPayout(
-        uint256 index,
-        address address_,
+        address account,
         uint256 amount,
-        bytes32 salt,
+        uint256 batch,
         bytes32[] calldata merkleProof
     ) external {
         require(!isLocked, "Payout locked");
-        require(amount != 0, "Invalid Amount");
 
-        bytes32 leafHash = keccak256(abi.encodePacked(index, address_, amount, salt));
+        bytes32 leafHash = keccak256(abi.encodePacked(account, amount, batch));
 
         require(!claimed[leafHash], "Payout already claimed");
         require(merkleProof.verify(merkleRoot, leafHash), "Invalid proof");
 
         claimed[leafHash] = true;
 
-        require(token.transferFrom(distAddress, address_, amount), "Payout failed");
+        token.wrappedTransferFrom(distAddress, account, amount);
 
-        emit ClaimedPayout(address_, amount, salt);
+        emit ClaimedPayout(account, amount, batch);
     }
 }

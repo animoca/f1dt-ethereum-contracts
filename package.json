@@ -55,17 +55,17 @@
   "devDependencies": {
     "@animoca/blockchain-inventory_metadata": "=0.1.0",
     "@animoca/ethereum-contracts-assets": "^1.0.1",
-    "@animoca/ethereum-contracts-assets-1.0.1": "npm:@animoca/ethereum-contracts-assets@1.0.1",
+    "@animoca/ethereum-contracts-assets-1.1.4": "npm:@animoca/ethereum-contracts-assets@1.1.4",
     "@animoca/ethereum-contracts-core": "^1.1.1",
-    "@animoca/ethereum-contracts-core-1.0.1": "npm:@animoca/ethereum-contracts-core@1.0.1",
-    "@animoca/ethereum-hardhat-bootstrap": "^1.0.0",
+    "@animoca/ethereum-contracts-core-1.1.1": "npm:@animoca/ethereum-contracts-core@1.1.1",
+    "@animoca/ethereum-hardhat-bootstrap": "^1.0.1",
     "@animoca/f1dt-core_metadata": "^2.1.0",
     "@animoca/revv-ethereum-contracts-1.0.0": "npm:@animoca/revv-ethereum-contracts@1.0.0",
     "@openzeppelin/contracts": "=3.4.0",
     "hardhat": "^2.4.1"
   },
   "peerDependencies": {
-    "@animoca/ethereum-hardhat-bootstrap": "^1.0.0"
+    "@animoca/ethereum-hardhat-bootstrap": "^1.0.1"
   },
   "engines": {
     "node": ">=12.18 <13"
