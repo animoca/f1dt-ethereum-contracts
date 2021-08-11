@@ -26,13 +26,16 @@ contract NFTPayoutClaim is Ownable {
     }
 
     function setDistributor(address distAddress) external {
-        _requireOwnership(_msgSender());
+        address msgSender = _msgSender();
+        _requireOwnership(msgSender);
+
         distributorAddress = distAddress;
-        emit SetDistributor(_msgSender(), distAddress);
+        emit SetDistributor(msgSender, distAddress);
     }
 
     function addMerkleRoot(bytes32 merkleRoot) external {
-        _requireOwnership(_msgSender());
+        address msgSender = _msgSender();
+        _requireOwnership(msgSender);
         require(merkleRootExists[merkleRoot] == false, "MerkleRoot already exists.");
 
         uint256 count = merkleRootCount;
@@ -41,7 +44,7 @@ contract NFTPayoutClaim is Ownable {
         merkleRoots[merkleRoot] = true;
         merkleRootExists[merkleRoot] = true;
 
-        emit SetMerkleRoot(_msgSender(), merkleRoot);
+        emit SetMerkleRoot(msgSender, merkleRoot);
     }
 
     function disableMerkleRoot(bytes32 merkleRoot) external {

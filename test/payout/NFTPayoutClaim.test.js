@@ -233,7 +233,8 @@ describe('NFT PayoutClaim Distributor contract', function () {
     });
 
     it('Success: Claim payout successfully: Claimed leaf status', async function () {
-      /*let nftClaimReceipt = await this.distributor.claimPayout(
+      /*console.log(`this.inventory: ${this.inventory.address}`);
+      let nftClaimReceipt = await this.distributor.claimPayout(
         validClaimForNFT.batch,
         validClaimForNFT.receiver,
         validClaimForNFT.contractAddress,
@@ -245,21 +246,20 @@ describe('NFT PayoutClaim Distributor contract', function () {
       );
       await expectEvent(nftClaimReceipt, 'ClaimPayout');
 
-      console.log(`this.inventory: ${this.inventory.address}`);
-      let leafHash = ethUtil.keccak(
-        validClaimForNFT.batch,
-        validClaimForNFT.receiver,
-        validClaimForNFT.contractAddress,
-        validClaimForNFT.tokenIds,
-        validClaimForNFT.amounts,
-        validClaimForNFT.merkleRoot,
-        validClaimForNFT.merkleProof
-      );
-      console.log(`LeafHash: ${leafHash}`);
+            let leafHash = ethUtil.keccak(
+              validClaimForNFT.batch,
+              validClaimForNFT.receiver,
+              validClaimForNFT.contractAddress,
+              validClaimForNFT.tokenIds,
+              validClaimForNFT.amounts,
+              validClaimForNFT.merkleRoot,
+              validClaimForNFT.merkleProof
+            );
+            console.log(`LeafHash: ${leafHash}`);
 
-      let claimedStatus = await this.distributor.claimed[validClaimForNFT.merkleRoot][leafHash];
+            let claimedStatus = await this.distributor.claimed[validClaimForNFT.merkleRoot][leafHash];
 
-      claimedStatus.should.be.equal(true);*/
+            claimedStatus.should.be.equal(true);*/
     });
     it('Success: Claim payout successfully: Event trigger.', async function () {});
     it('Failure: Merkle root does not exist in NFT PayoutClaim contract', async function () {
