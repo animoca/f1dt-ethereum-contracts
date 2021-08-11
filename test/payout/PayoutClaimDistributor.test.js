@@ -59,6 +59,9 @@ describe('PayoutClaim Distributor contract', function () {
 
     it('lets owner set merkleRoot', async function () {
       let newMerkleRoot = '0x9ebcac2f57a45eb2f1989d25b00df9653f08de05d028a431fd5e66d24d09e91a';
+      let lockedReceipt = await this.distributor.setLocked(true, {from: deployer});
+      expectEvent(lockedReceipt, 'DistributionLocked');
+
       await this.distributor.setMerkleRoot(newMerkleRoot, {from: deployer});
       const merkleRoot = await this.distributor.merkleRoot();
 
@@ -108,13 +111,21 @@ describe('PayoutClaim Distributor contract', function () {
       });
     });
 
-    it('lets owner re-set the merkleRoot for next payout period', async function () {
+    it('lets owner re-set the merkleRoot for next payout period only when contract is locked', async function () {
       let newMerkleRoot = '0x74240ff0f67350e4c643ccd4b68d93aa4fa79da004e4120096d7a9f17fc5d9e1';
+      let lockedReceipt = await this.distributor.setLocked(true, {from: deployer});
+      expectEvent(lockedReceipt, 'DistributionLocked');
 
       await this.distributor.setMerkleRoot(newMerkleRoot, {from: deployer});
       const merkleRoot = await this.distributor.merkleRoot();
 
       merkleRoot.should.be.equal(newMerkleRoot);
+    });
+
+    it('failure to lets owner re-set the merkleRoot when contract is not locked', async function () {
+      let newMerkleRoot = '0x74240ff0f67350e4c643ccd4b68d93aa4fa79da004e4120096d7a9f17fc5d9e1';
+
+      await expectRevert(this.distributor.setMerkleRoot(newMerkleRoot, {from: deployer}), 'Payout not locked');
     });
 
     it('lets the owner lock the payout period', async function () {
@@ -177,8 +188,9 @@ describe('PayoutClaim Distributor contract', function () {
         owners: [participant],
         allowances: [this.revvMaxSupply],
       });
-      await this.distributor.setLocked(false);
+      await this.distributor.setLocked(true);
       await this.distributor.setMerkleRoot('0x995d251535fb06763307b60dcf81d2a9caf9d899ee59e775bdb18dace5b377f3', {from: deployer});
+      await this.distributor.setLocked(false);
       await this.distributor.setDistributorAddress(participant, {from: deployer});
     });
 
@@ -272,6 +284,7 @@ describe('PayoutClaim Distributor contract', function () {
 
     it('emits SetMerkleRoot event when owner re-sets the merkleRoot', async function () {
       let newMerkleRoot = '0x74240ff0f67350e4c643ccd4b68d93aa4fa79da004e4120096d7a9f17fc5d9e1';
+      await this.distributor.setLocked(true);
 
       const setMerkleRootEvent = await this.distributor.setMerkleRoot(newMerkleRoot, {from: deployer});
       await expectEvent(setMerkleRootEvent, 'SetMerkleRoot', {

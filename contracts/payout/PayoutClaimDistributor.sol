@@ -6,6 +6,15 @@ import {Ownable} from "@animoca/ethereum-contracts-core-1.1.1/contracts/access/O
 import {ERC20Wrapper, IWrappedERC20} from "@animoca/ethereum-contracts-core-1.1.1/contracts/utils/ERC20Wrapper.sol";
 
 /// @title PayoutClaimDistributor
+/// @notice Through this contract users could claim ERC20 token s/he is eligible to claim the rewards.
+///      - The owner/deployer of the contract could set merkle root, distributor address or lock/unlock the distribution.
+///      - Owner sets the ERC20 Token address (`token`) when deploying the contract, the owner also
+///        sets distributor address (`distAddress`) through `setDistributorAddress` function from which to distribute the tokens.
+///      - Owner should also approve the amount of ERC20 tokens allowed to distribute through this contract.
+///      - For owner to set new merkle root through `setMerkleRoot` function, contract distribution should be locked though
+///         `setLocked`.
+///      - To enable distribution again, it should be unlocked with `setLocked` function.
+
 contract PayoutClaimDistributor is Ownable {
     using MerkleProof for bytes32[];
     using ERC20Wrapper for IWrappedERC20;
@@ -21,7 +30,7 @@ contract PayoutClaimDistributor is Ownable {
     bool public isLocked;
 
     /*
-     * Mapping for hash for (index,  address, amount, salt) for claimed status
+     * Mapping for hash for (address, amount, batch) for claimed status
      */
     mapping(bytes32 => bool) public claimed;
 
@@ -33,17 +42,23 @@ contract PayoutClaimDistributor is Ownable {
         distAddress = msg.sender;
     }
 
-    /// @notice Merkle Root for current period to use for payout
+    /// @notice Merkle Root for current period to use for payout.
+    ///    - distributor contract should be locked before setting new merkle root
     /// @dev Owner sets merkle hash generated based on the payout set
+    /// @dev Reverts if the distribution contract is not locked while setting new merkle root
+    /// @dev Emits SetMerkleRoot event.
     /// @param merkleRoot_ bytes32 string of merkle root to set for specific period
     function setMerkleRoot(bytes32 merkleRoot_) public {
         _requireOwnership(_msgSender());
+        require(isLocked, "Payout not locked");
+
         merkleRoot = merkleRoot_;
         emit SetMerkleRoot(merkleRoot_);
     }
 
     /// @notice Set locked/unlocked status  for PayoutClaim Distributor
     /// @dev Owner lock/unlock each time new merkle root is being generated
+    /// @dev Emits DistributionLocked event.
     /// @param isLocked_ = true/false status
     function setLocked(bool isLocked_) public {
         _requireOwnership(_msgSender());
@@ -53,18 +68,22 @@ contract PayoutClaimDistributor is Ownable {
 
     /// @notice Distributor address in PayoutClaim Distributor
     /// @dev Wallet that holds token for distribution
+    /// @dev Emits SetDistributorAddress event.
     /// @param distributorAddress Distributor address used for distribution of `token` token
     function setDistributorAddress(address distributorAddress) public {
-        _requireOwnership(_msgSender());
+        address msgSender = _msgSender();
+        _requireOwnership(msgSender);
+
         distAddress = distributorAddress;
-        emit SetDistributorAddress(_msgSender(), distributorAddress);
+        emit SetDistributorAddress(msgSender, distributorAddress);
     }
 
     /// @notice Payout method that user calls to claim
     /// @dev Method user calls for claiming the payout for user
+    /// @dev Emits ClaimedPayout event.
     /// @param account Address of the user to claim the payout
     /// @param amount Claimable amount of address
-    /// @param batch Unique value for user for each new merkle root generating
+    /// @param batch Unique value for each new merkle root generating
     /// @param merkleProof Merkle proof of the user based on the merkle root
     function claimPayout(
         address account,
