@@ -6,7 +6,7 @@ import {Ownable} from "@animoca/ethereum-contracts-core-1.1.1/contracts/access/O
 import {ERC20Wrapper, IWrappedERC20} from "@animoca/ethereum-contracts-core-1.1.1/contracts/utils/ERC20Wrapper.sol";
 
 /// @title PayoutClaimDistributor
-/// @notice Through this contract users could claim ERC20 token s/he is eligible to claim the rewards.
+/// @notice Through this contract, users could claim ERC20 token s/he is eligible to claim the rewards.
 ///      - The owner/deployer of the contract could set merkle root, distributor address or lock/unlock the distribution.
 ///      - Owner sets the ERC20 Token address (`token`) when deploying the contract, the owner also
 ///        sets distributor address (`distAddress`) through `setDistributorAddress` function from which to distribute the tokens.
@@ -14,6 +14,7 @@ import {ERC20Wrapper, IWrappedERC20} from "@animoca/ethereum-contracts-core-1.1.
 ///      - For owner to set new merkle root through `setMerkleRoot` function, contract distribution should be locked though
 ///         `setLocked`.
 ///      - To enable distribution again, it should be unlocked with `setLocked` function.
+///      - Users could claim the ERC20 token payout when the distributor is unlocked.
 
 contract PayoutClaimDistributor is Ownable {
     using MerkleProof for bytes32[];
