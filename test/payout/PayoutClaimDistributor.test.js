@@ -51,7 +51,7 @@ describe('PayoutClaim Distributor contract', function () {
     it('lets owner set tokenAddress and merkleRoot on deployment', async function () {
       let tokenAddressPassedWithConstructor = this.revv.address.toLowerCase();
 
-      const ercTokenAddress = await this.distributor.ercToken();
+      const ercTokenAddress = await this.distributor.token();
 
       const tokenAddress = ercTokenAddress.toLowerCase();
       tokenAddress.should.be.equal(tokenAddressPassedWithConstructor);
@@ -59,6 +59,9 @@ describe('PayoutClaim Distributor contract', function () {
 
     it('lets owner set merkleRoot', async function () {
       let newMerkleRoot = '0x9ebcac2f57a45eb2f1989d25b00df9653f08de05d028a431fd5e66d24d09e91a';
+      let lockedReceipt = await this.distributor.setLocked(true, {from: deployer});
+      expectEvent(lockedReceipt, 'DistributionLocked');
+
       await this.distributor.setMerkleRoot(newMerkleRoot, {from: deployer});
       const merkleRoot = await this.distributor.merkleRoot();
 
@@ -87,13 +90,6 @@ describe('PayoutClaim Distributor contract', function () {
       await expectRevert(this.distributor.setLocked(false, {from: participant2}), 'Ownable: not the owner');
     });
 
-    it('a general(non-owner) user cannot re-set the token to claim', async function () {
-      await expectRevert(
-        this.distributor.setTokenToClaim('0x591cda1fddbbf1ad3bd32cb9dfa096a44644f2df', {from: participant2}),
-        'Ownable: not the owner'
-      );
-    });
-
     it('a general(non-owner) user cannot re-set the merkleRoot to claim', async function () {
       await expectRevert(
         this.distributor.setMerkleRoot('0x74240ff0f67350e4c643ccd4b68d93aa4fa79da004e4120096d7a9f17fc5d9e1', {from: participant2}),
@@ -115,24 +111,21 @@ describe('PayoutClaim Distributor contract', function () {
       });
     });
 
-    it('lets owner re-set the token to claim', async function () {
-      let newTokenAddress = '0x7fc77500c84a76ad7e9c93437bfc5ac33e2ddae9';
-
-      await this.distributor.setTokenToClaim(newTokenAddress, {from: deployer});
-
-      const token_address = await this.distributor.ercToken();
-      const tokenAddress = token_address.toLowerCase();
-
-      tokenAddress.should.be.equal(newTokenAddress);
-    });
-
-    it('lets owner re-set the merkleRoot for next payout period', async function () {
+    it('lets owner re-set the merkleRoot for next payout period only when contract is locked', async function () {
       let newMerkleRoot = '0x74240ff0f67350e4c643ccd4b68d93aa4fa79da004e4120096d7a9f17fc5d9e1';
+      let lockedReceipt = await this.distributor.setLocked(true, {from: deployer});
+      expectEvent(lockedReceipt, 'DistributionLocked');
 
       await this.distributor.setMerkleRoot(newMerkleRoot, {from: deployer});
       const merkleRoot = await this.distributor.merkleRoot();
 
       merkleRoot.should.be.equal(newMerkleRoot);
+    });
+
+    it('failure to lets owner re-set the merkleRoot when contract is not locked', async function () {
+      let newMerkleRoot = '0x74240ff0f67350e4c643ccd4b68d93aa4fa79da004e4120096d7a9f17fc5d9e1';
+
+      await expectRevert(this.distributor.setMerkleRoot(newMerkleRoot, {from: deployer}), 'Payout not locked');
     });
 
     it('lets the owner lock the payout period', async function () {
@@ -174,14 +167,13 @@ describe('PayoutClaim Distributor contract', function () {
 
   describe('Claim', function () {
     let validClaim = {
-      index: 1,
-      address: '0x6135944984E65F685b1a472e101785CF9c992ae3',
-      amount: 1200000,
-      salt: '0x5b10fd6221d7e058aa9342e0f01e64520a271ac12055ef84906e38bcd294561e',
+      address: '0xB898c5371c12b0863E44D91efe76611d87823812',
+      amount: 500000,
+      batch: 3,
       merkleProof: [
-        '0xb8303fe3f4620fac1b535148b30a22fb2bd9410717c917b51eb764bef5a2739c',
-        '0xe316021482d926284b997d6cc45073a863140146ae8b66f6dad0b8571a14b8e9',
-        '0x1101095aabb30b12258fad2c1225787180ba6037b0d93bda6919585b3fbe6b00',
+        '0x08a57f971071ef191dac652ce87edde6a0ced8e3158072f10299ca5cfdd2fdda',
+        '0x02e77a5a7036c3fb3a78bdfab3f4df213cabd7cebca9d995c719d8653d949a80',
+        '0x8b54ac121b019724a3718bb8bee0746763ebb1232a3f6166442d9c86a623ce7e',
       ],
     };
 
@@ -196,8 +188,9 @@ describe('PayoutClaim Distributor contract', function () {
         owners: [participant],
         allowances: [this.revvMaxSupply],
       });
+      await this.distributor.setLocked(true);
+      await this.distributor.setMerkleRoot('0x995d251535fb06763307b60dcf81d2a9caf9d899ee59e775bdb18dace5b377f3', {from: deployer});
       await this.distributor.setLocked(false);
-      await this.distributor.setMerkleRoot('0x9ebcac2f57a45eb2f1989d25b00df9653f08de05d028a431fd5e66d24d09e91a', {from: deployer});
       await this.distributor.setDistributorAddress(participant, {from: deployer});
     });
 
@@ -205,109 +198,59 @@ describe('PayoutClaim Distributor contract', function () {
       // lock the payout
       await this.distributor.setLocked(true);
       await expectRevert(
-        this.distributor.claimPayout(validClaim.index, validClaim.address, validClaim.amount, validClaim.salt, validClaim.merkleProof),
+        this.distributor.claimPayout(validClaim.address, validClaim.amount, validClaim.batch, validClaim.merkleProof),
         'Payout locked'
-      );
-    });
-
-    it("users can't claim if payout amount is zero", async function () {
-      let zeroAmountClaim = {
-        index: 1,
-        address: '0x6135944984E65F685b1a472e101785CF9c992ae3',
-        amount: '0x0',
-        salt: '0x5b10fd6221d7e058aa9342e0f01e64520a271ac12055ef84906e38bcd294561e',
-        merkleProof: [
-          '0xb8303fe3f4620fac1b535148b30a22fb2bd9410717c917b51eb764bef5a2739c',
-          '0xe316021482d926284b997d6cc45073a863140146ae8b66f6dad0b8571a14b8e9',
-          '0x1101095aabb30b12258fad2c1225787180ba6037b0d93bda6919585b3fbe6b00',
-        ],
-      };
-
-      await expectRevert(
-        this.distributor.claimPayout(
-          zeroAmountClaim.index,
-          zeroAmountClaim.address,
-          zeroAmountClaim.amount,
-          zeroAmountClaim.salt,
-          zeroAmountClaim.merkleProof
-        ),
-        'Invalid Amount'
       );
     });
 
     it('an invalid user cannot claim the tokens', async function () {
       let invalidUserClaim = {
-        index: 0,
         address: '0xcBDdA6E233Fd5FbB5ab60986bc67D5BD293924fb',
         amount: 100,
-        salt: '0xd3c033205c994a4fa7e88de1e82eb9a8570a6a7ebd368a12b5929d046506f16a',
+        batch: 1,
         merkleProof: ['0x74aef6706b4be14b9c9290fe649488479eff7bcaeaec6c71ab0aea3b8c8b1e4b'],
       };
 
       await expectRevert(
-        this.distributor.claimPayout(
-          invalidUserClaim.index,
-          invalidUserClaim.address,
-          invalidUserClaim.amount,
-          invalidUserClaim.salt,
-          invalidUserClaim.merkleProof
-        ),
+        this.distributor.claimPayout(invalidUserClaim.address, invalidUserClaim.amount, invalidUserClaim.batch, invalidUserClaim.merkleProof),
         'Invalid proof'
       );
     });
 
     it('a valid user can successfully claim the tokens', async function () {
-      let claimPayoutEvent = await this.distributor.claimPayout(
-        validClaim.index,
-        validClaim.address,
-        validClaim.amount,
-        validClaim.salt,
-        validClaim.merkleProof
-      );
+      let claimPayoutEvent = await this.distributor.claimPayout(validClaim.address, validClaim.amount, validClaim.batch, validClaim.merkleProof);
       await expectEvent(claimPayoutEvent, 'ClaimedPayout', {
-        _address: validClaim.address,
+        account: validClaim.address,
         amount: validClaim.amount,
-        salt: validClaim.salt,
+        batch: validClaim.batch,
       });
       let validUserBalance = await this.revv.balanceOf(validClaim.address);
-      validUserBalance.toNumber().should.be.equal(1200000);
+      validUserBalance.toNumber().should.be.equal(500000);
     });
 
     it("users can't claim tokens twice", async function () {
       // claim tokens once
-      let claimPayoutEvent = await this.distributor.claimPayout(
-        validClaim.index,
-        validClaim.address,
-        validClaim.amount,
-        validClaim.salt,
-        validClaim.merkleProof
-      );
+      let claimPayoutEvent = await this.distributor.claimPayout(validClaim.address, validClaim.amount, validClaim.batch, validClaim.merkleProof);
       await expectEvent(claimPayoutEvent, 'ClaimedPayout', {
-        _address: validClaim.address,
+        account: validClaim.address,
         amount: validClaim.amount,
-        salt: validClaim.salt,
+        batch: validClaim.batch,
       });
 
       // claim tokens twice
       await expectRevert(
-        this.distributor.claimPayout(validClaim.index, validClaim.address, validClaim.amount, validClaim.salt, validClaim.merkleProof),
+        this.distributor.claimPayout(validClaim.address, validClaim.amount, validClaim.batch, validClaim.merkleProof),
         'Payout already claimed'
       );
     });
 
     it('returns the payout claim status of an address', async function () {
       // claim tokens once
-      let claimPayoutEvent = await this.distributor.claimPayout(
-        validClaim.index,
-        validClaim.address,
-        validClaim.amount,
-        validClaim.salt,
-        validClaim.merkleProof
-      );
+      let claimPayoutEvent = await this.distributor.claimPayout(validClaim.address, validClaim.amount, validClaim.batch, validClaim.merkleProof);
       await expectEvent(claimPayoutEvent, 'ClaimedPayout', {
-        _address: validClaim.address,
+        account: validClaim.address,
         amount: validClaim.amount,
-        salt: validClaim.salt,
+        batch: validClaim.batch,
       });
 
       const isClaimedReceiptStatus = true; //this.distributor.claimed();
@@ -318,7 +261,7 @@ describe('PayoutClaim Distributor contract', function () {
       await this.revv.approve(this.distributor.address, 1, {from: participant});
 
       await expectRevert(
-        this.distributor.claimPayout(validClaim.index, validClaim.address, validClaim.amount, validClaim.salt, validClaim.merkleProof),
+        this.distributor.claimPayout(validClaim.address, validClaim.amount, validClaim.batch, validClaim.merkleProof),
         'SafeMath: subtraction overflow'
       );
     });
@@ -339,35 +282,28 @@ describe('PayoutClaim Distributor contract', function () {
       await this.distributor.setLocked(false);
     });
 
-    it('emits SetTokenToClaim event when owner re-sets the tokenAddress', async function () {
-      let newTokenAddress = '0x7fc77500c84a76ad7e9c93437bfc5ac33e2ddae9';
-      const setTokenToClaimEvent = await this.distributor.setTokenToClaim(newTokenAddress, {from: deployer});
-      await expectEvent(setTokenToClaimEvent, 'SetTokenToClaim', {
-        _tokenAddress: '0x7fC77500C84a76ad7e9C93437BfC5ac33e2DdAE9',
-      });
-    });
-
     it('emits SetMerkleRoot event when owner re-sets the merkleRoot', async function () {
       let newMerkleRoot = '0x74240ff0f67350e4c643ccd4b68d93aa4fa79da004e4120096d7a9f17fc5d9e1';
+      await this.distributor.setLocked(true);
 
       const setMerkleRootEvent = await this.distributor.setMerkleRoot(newMerkleRoot, {from: deployer});
       await expectEvent(setMerkleRootEvent, 'SetMerkleRoot', {
-        _merkleRoot: newMerkleRoot,
+        merkleRoot: newMerkleRoot,
       });
     });
 
     it('emits DistributionLocked event when owner locks the payout period', async function () {
       const setLockedEvent = await this.distributor.setLocked(true, {from: deployer});
       await expectEvent(setLockedEvent, 'DistributionLocked', {
-        _isLocked: true,
+        isLocked: true,
       });
     });
 
     it('emits SetDistributionAddress event when owner re-sets distributor address ', async function () {
       let setDistributorEvent = await this.distributor.setDistributorAddress(participant, {from: deployer});
       await expectEvent(setDistributorEvent, 'SetDistributorAddress', {
-        _ownerAddress: deployer,
-        _distAddress: participant,
+        ownerAddress: deployer,
+        distAddress: participant,
       });
     });
   });
