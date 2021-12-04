@@ -2,8 +2,8 @@
 pragma solidity >=0.7.6 <0.8.0;
 
 import {MerkleProof} from "@openzeppelin/contracts/cryptography/MerkleProof.sol";
+import {IERC20} from "@animoca/ethereum-contracts-assets/contracts/token/ERC20/interfaces/IERC20.sol";
 import {Ownable} from "@animoca/ethereum-contracts-core/contracts/access/Ownable.sol";
-import {IERC20} from "@animoca/ethereum-contracts-assets/contracts/token/ERC20/IERC20.sol";
 
 /// @title PayoutClaimDistributor
 contract PayoutClaimDistributor is Ownable {

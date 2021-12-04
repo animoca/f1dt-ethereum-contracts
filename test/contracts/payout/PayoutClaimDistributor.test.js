@@ -1,20 +1,20 @@
 const {accounts, artifacts} = require('hardhat');
 const {BN, expectEvent, expectRevert} = require('@openzeppelin/test-helpers');
 const {toWei} = require('web3-utils');
-const {One, Two} = require('@animoca/ethereum-contracts-core').constants;
-
-const REVV = artifacts.require('REVV');
-const PayoutClaimDistributor = artifacts.require('PayoutClaimDistributor');
+const {One, Two, ZeroAddress} = require('@animoca/ethereum-contracts-core').constants;
 
 const [deployer, ...participants] = accounts;
 const [participant, participant2, participant3] = participants;
 
 describe('PayoutClaim Distributor contract', function () {
   async function doDeploy(overrides = {}) {
-    this.revv = await REVV.new(overrides.holders || [participant], overrides.amounts || [toWei('1000')], {
-      from: overrides.deployer || deployer,
-    });
-    this.distributor = await PayoutClaimDistributor.new(this.revv.address, {
+    const registry = await artifacts.require('ForwarderRegistry').new({from: deployer});
+    this.revv = await artifacts
+      .require('ERC20Mock')
+      .new(overrides.holders || [participant], overrides.amounts || [toWei('1000')], registry.address, ZeroAddress, {
+        from: overrides.deployer || deployer,
+      });
+    this.distributor = await artifacts.require('PayoutClaimDistributor').new(this.revv.address, {
       from: overrides.deployer || deployer,
     });
   }
@@ -319,7 +319,7 @@ describe('PayoutClaim Distributor contract', function () {
 
       await expectRevert(
         this.distributor.claimPayout(validClaim.index, validClaim.address, validClaim.amount, validClaim.salt, validClaim.merkleProof),
-        'SafeMath: subtraction overflow'
+        'ERC20: insufficient allowance'
       );
     });
   });
